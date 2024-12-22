@@ -1,0 +1,22 @@
+plugins {
+    id "dev.architectury.loom" version "1.7-SNAPSHOT" apply false
+    id "architectury-plugin" version "3.4-SNAPSHOT" apply false
+    id "com.modrinth.minotaur" version "2.+" apply false
+}
+
+allprojects {
+    apply plugin: "java"
+    apply plugin: "java-library"
+    apply plugin: "maven-publish"
+    apply plugin: "idea"
+    apply plugin: "dev.architectury.loom"
+    apply plugin: "architectury-plugin"
+    apply plugin: "com.modrinth.minotaur"
+
+    archivesBaseName = modName
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = "UTF-8"
+        options.release = libs.versions
+    }
+}
