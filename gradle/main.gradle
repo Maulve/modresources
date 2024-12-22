@@ -1,0 +1,108 @@
+
+static String trimSuffix(String original, String suffix) {
+    if(original.endsWith(suffix)) {
+        return original.substring(0, original.length() - suffix.length())
+    }
+    return original
+}
+
+static String getMcVersion(Project project) {
+    return project.property("mc.versions").toString().split(",")[0]
+}
+
+def buildVersionString = { String modVersion, String mcVersion, String loader ->
+    def semver = modVersion
+    semver += "+" + mcVersion
+    semver += "+" + loader
+    return semver
+}
+
+def versionRange = { List<String> mcVersions ->
+    if (mcVersions.size() == 1) {
+        return mcVersions[0]
+    }
+
+    def v0 = mcVersions.first()
+    def v1 = mcVersions.last()
+
+    return "${v0}-${v1}"
+}
+
+subprojects {
+    apply plugin: "dev.architectury.loom"
+
+    dependencies {
+        minecraft "com.mojang:minecraft:${getMcVersion(rootProject)}"
+        mappings loom.layered {
+            mappings "net.fabricmc:yarn:${rootProject.property("loom.yarn")}"
+            mappings "dev.architectury:yarn-mappings-patch-neoforge:${rootProject.property("loom.yarn_patch_neoforge")}"
+        }
+    }
+
+}
+
+allprojects {
+    apply plugin: "java"
+    apply plugin: "architectury-plugin"
+    apply plugin: "maven-publish"
+
+    group = rootProject.maven_group
+
+    base {
+        archivesName = rootProject.archives_base_name
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    java {
+        withSourcesJar()
+    }
+}
+
+subprojects {
+    processResources {
+        def stringProperties = providers.gradlePropertiesPrefixedBy('').get()
+        stringProperties.each { inputs.property(it.key, it.value) }
+
+        ["*.mixins.json", "*.mod.json*", "META-INF/*mods.toml"].each {
+            filesMatching(it) {
+                expand(stringProperties) {
+                    escapeBackslash = true
+                }
+            }
+        }
+    }
+
+    if (project.name == "common") {
+        return
+    }
+
+    String loader = project.name
+
+    version = buildVersionString(rootProject.property("mod_version").toString(), versionRange(rootProject.property("mc.versions").split(",").toList()), loader)
+
+    apply plugin: "com.modrinth.minotaur"
+
+    modrinth {
+        token = System.getenv("MODRINTH_API_KEY")
+        projectId = rootProject.property("modrinth.id")
+        versionName = rootProject.property("mod_version")
+        versionNumber = project.version
+        versionType = "release"
+        uploadFile = remapJar
+        loaders.add(loader)
+
+        gameVersions = rootProject.property("mc.versions").toString().split(",").collect { trimSuffix(it, ".0")}
+
+        File changeLogFile = rootProject.file("CHANGELOG.md")
+
+        if (changeLogFile.text.isBlank()) {
+            logger.log(LogLevel.WARN, "WARNING: Changelog is empty")
+        }
+
+        changelog = changeLogFile.text
+
+    }
+}
