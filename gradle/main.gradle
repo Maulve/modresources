@@ -34,8 +34,8 @@ subprojects {
     dependencies {
         minecraft "com.mojang:minecraft:${getMcVersion(rootProject)}"
         mappings loom.layered {
-            mappings "net.fabricmc:yarn:${rootProject.property("loom.yarn")}"
-            mappings "dev.architectury:yarn-mappings-patch-neoforge:${rootProject.property("loom.yarn_patch_neoforge")}"
+            officialMojangMappings()
+            parchment("org.parchmentmc.data:parchment-${getMcVersion(rootProject)}:${rootProject.parchment_version}@zip")
         }
     }
 
@@ -53,6 +53,7 @@ allprojects {
     }
 
     repositories {
+        maven { url = "https://maven.parchmentmc.org"}
         mavenCentral()
     }
 
